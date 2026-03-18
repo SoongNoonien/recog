@@ -4,7 +4,7 @@
 ##  which provides a collection of methods for the constructive recognition
 ##  of groups.
 ##
-##  This files's authors include Max Neunhöffer, Ákos Seress.
+##  This files's authors include Daniel Rademacher, Max Neunhöffer, Ákos Seress.
 ##
 ##  Copyright of recog belongs to its developers whose names are too numerous
 ##  to list here. Please refer to the COPYRIGHT file for details.
@@ -17,39 +17,6 @@
 ##
 #############################################################################
 
-
-RECOG.FindStdGensUsingBSGS := function(g,stdgens,projective,large)
-  # stdgens generators for the matrix group g
-  # returns an SLP expressing stdgens in the generators of g
-  # set projective to true for projective mode
-  # set large to true if we should not bother finding nice base points!
-  local S,dim,gens,gm,i,l,strong;
-  dim := DimensionOfMatrixGroup(g);
-  if IsObjWithMemory(GeneratorsOfGroup(g)[1]) then
-      gm := GroupWithMemory(StripMemory(GeneratorsOfGroup(g)));
-  else
-      gm := GroupWithMemory(g);
-  fi;
-  if HasSize(g) then SetSize(gm,Size(g)); fi;
-  if large then
-      S := StabilizerChain(gm,rec( Projective := projective,
-        Cand := rec( points := One(g),
-                     ops := ListWithIdenticalEntries(dim, OnLines) ) ) );
-  else
-      S := StabilizerChain(gm,rec( Projective := projective ) );
-  fi;
-  strong := ShallowCopy(StrongGenerators(S));
-  ForgetMemory(S);
-  l := List(stdgens,x->SiftGroupElementSLP(S,x));
-  gens := EmptyPlist(Length(stdgens));
-  for i in [1..Length(stdgens)] do
-      if not l[i].isone then
-          return fail;
-      fi;
-      Add(gens,ResultOfStraightLineProgram(l[i].slp,strong));
-  od;
-  return SLPOfElms(gens);
-end;
 
 RECOG.ResetSLstd := function(r)
   r.left := One(r.a);
@@ -389,7 +356,8 @@ RECOG.RecogniseSL2NaturalEvenChar := function(g,f,torig)
   fi;
   if torig = false then
     # if no involution t has been given, compute one, using Proposition 4 from
-    # [KK15].
+    # "Black box groups isomorphic to PGL(2,2^e)" by Kantor & Kassabov,
+    # Journal of Algebra, 421 (2015) 16–26.
     repeat
         am:=PseudoRandom(g);
     until not IsOneProjective(am);
@@ -554,6 +522,7 @@ RECOG.RecogniseSL2NaturalEvenChar := function(g,f,torig)
   return res;
 end;
 
+
 RECOG.GuessProjSL2ElmOrder := function(x,f)
   local facts,i,j,o,p,q,r,s,y,z;
   p := Characteristic(f);
@@ -650,7 +619,8 @@ RECOG.IsThisSL2Natural := function(gens,f)
       Info(InfoRecog,4,"SL2: Computing stabiliser chain.");
       S := StabilizerChain(Group(gens));
       Info(InfoRecog,4,"SL2: size is ",Size(S));
-      return Size(S) mod (q*(q-1)*(q+1)) = 0;
+      # return Size(S) mod (q*(q-1)*(q+1)) = 0;
+      return Size(S) = (q*(q-1)*(q+1));
   fi;
 
   seenqp1 := false;
@@ -726,7 +696,6 @@ RECOG.IsThisSL2Natural := function(gens,f)
   # Now we know that the group is not dihedral!
   return false;
 end;
-
 
 
 # Now the code for writing SLPs:
@@ -921,10 +890,10 @@ function(ri, g)
       # This is (P)SL2, lets set up the recognition:
       Info(InfoRecog,2,"ClassicalNatural: this is PSL_2!");
       if IsEvenInt(q) then
-          std := RECOG.RecogniseSL2NaturalEvenChar(gm,f,false);
+          std := RECOG.ConRecogNaturalSL2(gm,f);
           ri!.comment := "PSL2Even";
       else
-          std := RECOG.RecogniseSL2NaturalOddCharUsingBSGS(gm,f);
+          std := RECOG.ConRecogNaturalSL2(gm,f);
           ri!.comment := "PSL2Odd";
       fi;
       Setslptonice(ri,SLPOfElms(std.all));
